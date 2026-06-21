@@ -1,0 +1,61 @@
+name: Build & Deploy SDK to Server
+
+on:
+  push:
+    tags:
+      - 'v*'               # 只在推送版本标签时触发（v1.0.0, v1.1.0 ...）
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # 从 package.json 读取版本号，去掉 v 前缀
+      - name: Read version
+        id: version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Install & Build
+        run: |
+          npm install
+          npm run build
+
+      - name: Verify build output
+        run: |
+          echo "=== Build output ==="
+          ls -la dist/
+          echo "=== UMD file size ==="
+          wc -c dist/monitor.umd.js
+
+      # 上传到服务器，按版本号分目录
+      - name: Deploy to server (versioned path)
+        uses: appleboy/scp-action@v0.1.5
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          password: ${{ secrets.SERVER_PASSWORD }}
+          source: 'dist/*'
+          target: '/var/www/static/monitor/${{ steps.version.outputs.version }}/'
+          strip_components: 1       # 去掉 dist/ 前缀
+
+      # 更新 latest 软链接，指向最新版本
+      - name: Update latest symlink
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          password: ${{ secrets.SERVER_PASSWORD }}
+          script: |
+            cd /var/www/static/monitor
+            rm -f latest
+            ln -s ${{ steps.version.outputs.version }} latest
+            echo "latest → ${{ steps.version.outputs.version }}"
+            ls -la

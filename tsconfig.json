@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "target": "ES2018",
+    "module": "ESNext",
+    "lib": ["ES2018", "DOM"],
+    "declaration": true,
+    "declarationDir": "dist/types",
+    "outDir": "dist",
+    "rootDir": "src",
+    "strict": true,
+    "esModuleInterop": true,
+    "moduleResolution": "node",
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true
+  },
+  "include": ["src/**/*"]
+}

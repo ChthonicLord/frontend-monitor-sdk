@@ -1,0 +1,22 @@
+{
+  "name": "@monitor/frontend-sdk",
+  "version": "1.0.0",
+  "description": "前端监控 SDK - 错误 / 性能 / 行为 / 资源采集与上报",
+  "main": "dist/monitor.umd.js",
+  "module": "dist/monitor.esm.js",
+  "types": "dist/types/index.d.ts",
+  "files": ["dist"],
+  "scripts": {
+    "dev": "rollup -c -w",
+    "build": "rollup -c",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": ["monitor", "frontend", "performance", "error-tracking", "sdk"],
+  "license": "MIT",
+  "devDependencies": {
+    "@rollup/plugin-typescript": "^11.1.0",
+    "rollup": "^4.0.0",
+    "tslib": "^2.6.0",
+    "typescript": "^5.3.0"
+  }
+}
