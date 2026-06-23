@@ -29,6 +29,9 @@ export class ErrorCollector {
     };
   }
 
+  private origFetch!: typeof window.fetch;
+  private origXHROpen!: typeof XMLHttpRequest.prototype.open;
+
   start(onEvent: ErrorCallback): void {
     this.callback = onEvent;
     window.addEventListener('error', this.boundHandlers.onError, true);
@@ -36,6 +39,10 @@ export class ErrorCollector {
       'unhandledrejection',
       this.boundHandlers.onUnhandledRejection,
     );
+
+    // 拦截 fetch / XHR 接口错误
+    this.interceptFetch();
+    this.interceptXHR();
   }
 
   stop(): void {
@@ -44,7 +51,61 @@ export class ErrorCollector {
       'unhandledrejection',
       this.boundHandlers.onUnhandledRejection,
     );
+
+    // 恢复原始 fetch / XHR
+    if (this.origFetch) window.fetch = this.origFetch;
+    if (this.origXHROpen) XMLHttpRequest.prototype.open = this.origXHROpen;
+
     this.callback = null;
+  }
+
+  private interceptFetch(): void {
+    if (typeof window === 'undefined' || !window.fetch) return;
+    this.origFetch = window.fetch;
+    const self = this;
+    window.fetch = function (...args: Parameters<typeof fetch>) {
+      return self.origFetch!.apply(this, args).then((res) => {
+        if (!res.ok && self.callback) {
+          const url = typeof args[0] === 'string' ? args[0] : args[0]?.url || '';
+          self.callback({
+            ...self.buildBase(),
+            message: `API ${res.status}: ${url}`,
+            stack: '',
+            errorType: 'ApiError',
+            filename: url,
+            lineno: undefined,
+            colno: undefined,
+          });
+        }
+        return res;
+      });
+    };
+  }
+
+  private interceptXHR(): void {
+    if (typeof XMLHttpRequest === 'undefined') return;
+    this.origXHROpen = XMLHttpRequest.prototype.open;
+    const self = this;
+    XMLHttpRequest.prototype.open = function (
+      method: string,
+      url: string | URL,
+    ) {
+      const xhr = this as XMLHttpRequest;
+      xhr.addEventListener('loadend', () => {
+        if (xhr.status >= 400 && self.callback) {
+          self.callback({
+            ...self.buildBase(),
+            message: `XHR ${xhr.status}: ${method} ${url}`,
+            stack: '',
+            errorType: 'ApiError',
+            filename: typeof url === 'string' ? url : url.toString(),
+            lineno: undefined,
+            colno: undefined,
+          });
+        }
+      });
+      return self.origXHROpen.apply(this, arguments as any);
+    };
   }
 
   private buildBase(): Omit<ErrorEvent, keyof BaseEvent> & BaseEvent {

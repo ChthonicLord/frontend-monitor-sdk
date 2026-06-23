@@ -68,7 +68,7 @@ export class Sanitizer {
 export class Deduplicator {
   private cache: Map<string, number> = new Map();
   private maxDuplicates: number;
-  private windowMs = 10_000; // 10 秒去重窗口
+  private windowMs = 300_000; // 5 分钟去重窗口
 
   constructor(maxDuplicates: number) {
     this.maxDuplicates = maxDuplicates;

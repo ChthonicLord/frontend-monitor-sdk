@@ -90,6 +90,40 @@ export function deepClone<T>(obj: T): T {
   return cloned;
 }
 
+/** 生成简短 UUID */
+export function uuid4(): string {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+
+/** 获取或创建访客 ID（localStorage 持久化） */
+const VISITOR_KEY = '_monitor_vid';
+export function getVisitorId(): string {
+  try {
+    let id = localStorage.getItem(VISITOR_KEY);
+    if (!id) {
+      id = uuid4();
+      localStorage.setItem(VISITOR_KEY, id);
+    }
+    return id;
+  } catch {
+    // localStorage 不可用时降级为 session 级别 ID
+    return uuid4();
+  }
+}
+
+/** requestIdleCallback 降级封装 */
+export function idle(cb: () => void, timeout = 3000): void {
+  if (typeof requestIdleCallback !== 'undefined') {
+    requestIdleCallback(() => cb(), { timeout });
+  } else {
+    setTimeout(cb, 1);
+  }
+}
+
 /** 从 userAgent 解析设备基本信息 */
 export function parseDeviceInfo(): Record<string, string> {
   const ua = navigator.userAgent;

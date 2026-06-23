@@ -18,7 +18,7 @@ import { BehaviorCollector } from '../collectors/behavior-collector';
 import { ResourceCollector } from '../collectors/resource-collector';
 import { ProcessorPipeline } from '../processors/pipeline';
 import { Reporter } from '../reporters/batch-reporter';
-import { generateId, timestamp, getPageUrl } from '../utils';
+import { generateId, timestamp, getPageUrl, getVisitorId, idle } from '../utils';
 
 /** 默认配置 */
 function defaultConfig(): FullMonitorConfig {
@@ -77,6 +77,11 @@ export class Monitor {
       throw new Error('[Monitor] reportUrl is required');
     }
 
+    // 自动生成访客 ID（用于 UV 统计，业务方可后续覆盖）
+    if (!this.userInfo.userId) {
+      this.userInfo.userId = getVisitorId();
+    }
+
     // 初始化各层
     this.errorCollector = new ErrorCollector(this.config);
     this.performanceCollector = new PerformanceCollector(this.config);
@@ -105,22 +110,22 @@ export class Monitor {
 
     const onEvent = (event: MonitorEvent) => this.handleEvent(event);
 
-    // 错误采集（始终开启）
+    // 错误采集（始终开启，必须立即执行——错误随时可能发生）
     this.errorCollector.start(onEvent);
 
-    // 性能采集
+    // 性能采集（异步，浏览器空闲时启动）
     if (this.config.enablePerformance) {
-      this.performanceCollector.start(onEvent);
+      idle(() => this.performanceCollector.start(onEvent));
     }
 
-    // 行为采集
+    // 行为采集（非关键，浏览器空闲时启动）
     if (this.config.enableBehavior) {
-      this.behaviorCollector.start(onEvent);
+      idle(() => this.behaviorCollector.start(onEvent));
     }
 
-    // 资源采集
+    // 资源采集（非关键，浏览器空闲时启动）
     if (this.config.enableResource) {
-      this.resourceCollector.start(onEvent);
+      idle(() => this.resourceCollector.start(onEvent));
     }
 
     // 启动定时上报

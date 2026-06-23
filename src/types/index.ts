@@ -159,7 +159,7 @@ export interface PerformanceMetrics {
 export interface BehaviorEvent extends BaseEvent {
   eventType: EventType.BEHAVIOR;
   /** 行为类型 */
-  behaviorType: 'click' | 'scroll' | 'input' | 'navigate' | 'expose';
+  behaviorType: 'click' | 'scroll' | 'input' | 'navigate' | 'expose' | 'dwell';
   /** 行为目标 */
   target?: string;
   /** 行为附加数据 */

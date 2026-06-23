@@ -29,8 +29,41 @@ export class BehaviorCollector {
     }, 1000);
   }
 
+  // 停留时长计时
+  private entryTime = 0;
+  private dwellReported = false;
+
+  private handleVisibility = (): void => {
+    if (document.visibilityState === 'hidden') {
+      this.reportDwell();
+    } else if (document.visibilityState === 'visible') {
+      // 重新进入页面，重置计时
+      this.entryTime = Date.now();
+      this.dwellReported = false;
+    }
+  };
+
+  private handleBeforeUnload = (): void => {
+    this.reportDwell();
+  };
+
+  private reportDwell(): void {
+    if (this.dwellReported || this.entryTime === 0) return;
+    this.dwellReported = true;
+    const duration = Date.now() - this.entryTime;
+    if (duration > 0) {
+      this.emitBehavior('dwell', 'page', {
+        duration,
+        entryTime: this.entryTime,
+        exitTime: Date.now(),
+      });
+    }
+  }
+
   start(onEvent: BehaviorCallback): void {
     this.callback = onEvent;
+    this.entryTime = Date.now();
+    this.dwellReported = false;
 
     // PV 上报
     this.emitPageView();
@@ -47,14 +80,23 @@ export class BehaviorCollector {
     // SPA 路由变化 (hashchange / popstate)
     window.addEventListener('hashchange', this.handleRouteChange);
     window.addEventListener('popstate', this.handleRouteChange);
+
+    // 停留时长：页面隐藏 / 关闭时上报
+    document.addEventListener('visibilitychange', this.handleVisibility);
+    window.addEventListener('beforeunload', this.handleBeforeUnload);
   }
 
   stop(): void {
+    // 停止前上报停留时长
+    this.reportDwell();
+
     document.removeEventListener('click', this.handleClick, true);
     document.removeEventListener('scroll', this.throttledScroll, true);
     document.removeEventListener('change', this.handleInput, true);
     window.removeEventListener('hashchange', this.handleRouteChange);
     window.removeEventListener('popstate', this.handleRouteChange);
+    document.removeEventListener('visibilitychange', this.handleVisibility);
+    window.removeEventListener('beforeunload', this.handleBeforeUnload);
     this.callback = null;
   }
 

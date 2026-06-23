@@ -80,6 +80,14 @@ declare global {
  * ```
  */
 export function createMonitor(config: MonitorConfig): MonitorInstance {
+  // 单例模式：如果已存在实例（可能来自自动初始化或之前调用），直接返回
+  if (typeof window !== 'undefined' && window.__monitor__) {
+    if (config.debug) {
+      console.warn('[Monitor] Instance already exists, returning existing.');
+    }
+    return window.__monitor__;
+  }
+
   const monitor = new Monitor(config);
   monitor.start();
 
@@ -91,9 +99,9 @@ export function createMonitor(config: MonitorConfig): MonitorInstance {
     stop: () => monitor.stop(),
   };
 
-  // 暴露到 window，方便 SPA 路由追踪等场景
+  // 暴露到 window，方便 SPA 路由追踪等场景，同时防止重复初始化
   if (typeof window !== 'undefined') {
-    window.__monitor__ = window.__monitor__ || instance;
+    window.__monitor__ = instance;
   }
 
   return instance;
